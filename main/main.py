@@ -1,6 +1,6 @@
 import asyncio
 import re
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta
@@ -9,13 +9,11 @@ from aiogram.types import ReplyKeyboardRemove
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import pytz
 import logging
-import buttons.buttons as kb
-from states import AddWorker, Form, UpdateWorker, ReportState
-from buttons.buttons import get_filial_kb, get_phone_kb, get_group_reply_kb, get_status_kb
-from database.database import init_db, add_worker_to_db, get_all_workers, update_worker_time, get_worker_by_id
+from states import AddWorker, UpdateWorker, ReportState
+from buttons import get_filial_kb, get_phone_kb, get_status_kb
+from database import add_worker_to_db, update_worker_time, get_worker_by_id, get_all_workers, delete_worker_from_db
 from securitiy import ADMINS, GROUP_ID
 from aiogram import types, F
-from database.database import get_all_workers, delete_worker_from_db
 
 logging.basicConfig(level=logging.INFO)
 tashkent_tz = pytz.timezone('Asia/Tashkent')
@@ -30,7 +28,6 @@ dp = Dispatcher()
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
     args = message.text.split()
-
 
     if len(args) > 1 and args[1] == "check":
         worker = get_worker_by_id(user_id)
@@ -47,7 +44,6 @@ async def start_handler(message: types.Message):
         await message.answer("Xush kelibsiz, Manager!")
     else:
         await message.answer("Botga xush kelibsiz! Hisobot topshirish uchun guruhdagi tugmani bosing.")
-
 
 
 @dp.message(Command("add_worker"))
@@ -243,6 +239,7 @@ async def send_report_to_group(user_id, status_text):
         except Exception as e:
             print(f"❌ Guruhga xabar yuborishda xato: {e}")
 
+
 async def auto_reminder():
     hozir = datetime.now(tashkent_tz)
     target_time = (hozir + timedelta(minutes=15)).strftime("%H:%M")
@@ -300,7 +297,6 @@ async def process_late_reason(message: types.Message, state: FSMContext):
 
     await message.answer("✅ Rahmat! Sabab adminlarga yetkazildi.")
     await state.clear()
-
 
 
 async def main():
