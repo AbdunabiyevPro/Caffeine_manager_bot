@@ -79,11 +79,17 @@ async def get_name(message: types.Message, state: FSMContext):
 
 @dp.message(AddWorker.phone)
 async def get_phone(message: types.Message, state: FSMContext):
+    # Agar foydalanuvchi tugmani bossa message.contact keladi, aks holda message.text
     p_num = message.contact.phone_number if message.contact else message.text
+
+    # Kichik tekshiruv: foydalanuvchi buyruq yuborib yubormadimi?
+    if p_num.startswith('/'):
+        await message.answer("⚠️ Iltimos, avval telefon raqamini kiriting yoki tugmani bosing:")
+        return
+
     await state.update_data(phone=p_num)
     await message.answer("4. Qaysi filialda ishlaydi?", reply_markup=get_filial_kb())
     await state.set_state(AddWorker.filial)
-
 
 @dp.message(AddWorker.filial)
 async def get_filial(message: types.Message, state: FSMContext):
