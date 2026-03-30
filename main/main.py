@@ -40,7 +40,12 @@ async def start_handler(message: types.Message):
         return
 
     if user_id in ADMINS:
-        await message.answer("Xush kelibsiz, Manager!")
+        await message.answer("👋 **Assalomu alaykum, Admin!**\n\n"
+            "Bot boshqaruv paneli ishga tushdi. Quyidagi buyruqlardan foydalanishingiz mumkin:\n\n"
+            "➕ /add_worker — Yangi ishchi qo'shish\n"
+            "📊 /workers_info — Ishchilar ma'lumotlarini ko'rish\n"
+            "⚙️ /workers — Ishchilar ma'lumotlarini tahrirlash\n\n"
+            "Kerakli bo'limni tanlang:")
     else:
         await message.answer("Botga xush kelibsiz! Hisobot topshirish uchun guruhdagi tugmani bosing.")
 
