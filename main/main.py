@@ -1,3 +1,4 @@
+from aiogram.client.session.aiohttp import AiohttpSession
 import asyncio
 import re
 from aiogram import Bot, Dispatcher
@@ -12,17 +13,15 @@ import logging
 from states import AddWorker, UpdateWorker, ReportState
 from buttons import get_filial_kb, get_phone_kb, get_status_kb
 from database import add_worker_to_db, update_worker_time, get_worker_by_id, get_all_workers, delete_worker_from_db
-from securitiy import ADMINS, GROUP_ID
+from securitiy import ADMINS, GROUP_ID, TOKEN
 from aiogram import types, F
-
 logging.basicConfig(level=logging.INFO)
 tashkent_tz = pytz.timezone('Asia/Tashkent')
 hozir = datetime.now(tashkent_tz)
 target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
-TOKEN = "8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y"
-bot = Bot(token=TOKEN)
 dp = Dispatcher()
-
+session = AiohttpSession(proxy="http://proxy.server:3128")
+bot = Bot(token=TOKEN, session=session)
 
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
