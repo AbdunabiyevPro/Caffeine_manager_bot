@@ -13,15 +13,14 @@ import logging
 from states import AddWorker, UpdateWorker, ReportState
 from buttons import get_filial_kb, get_phone_kb, get_status_kb
 from database import add_worker_to_db, update_worker_time, get_worker_by_id, get_all_workers, delete_worker_from_db
-from securitiy import ADMINS, GROUP_ID, TOKEN
+from securitiy import ADMINS, GROUP_ID
 from aiogram import types, F
 logging.basicConfig(level=logging.INFO)
 tashkent_tz = pytz.timezone('Asia/Tashkent')
 hozir = datetime.now(tashkent_tz)
 target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
 dp = Dispatcher()
-session = AiohttpSession(proxy="http://proxy.server:3128")
-bot = Bot(token=TOKEN, session=session)
+bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
 
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
@@ -309,20 +308,34 @@ async def process_late_reason(message: types.Message, state: FSMContext):
     await state.clear()
 
 
+import asyncio
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+
+# ... boshqa importlar va dp, bot obyekti ...
+
 async def main():
+    # 1. Shlyuzni (Scheduler) sozlash
     scheduler = AsyncIOScheduler(timezone='Asia/Tashkent')
 
+    # Ishni qo'shish
     scheduler.add_job(auto_reminder, "interval", minutes=1)
 
+    # Schedulerni ishga tushirish
     scheduler.start()
 
-    await dp.start_polling(bot)
+    try:
+        # 2. Botni polling rejimida ishga tushirish
+        # skip_updates=True qilsangiz, bot o'chiq bo'lgan vaqtdagi xabarlarni e'tiborsiz qoldiradi
+        await dp.start_polling(bot, skip_updates=True)
+    finally:
+        # Bot to'xtaganda sessiyani yopish (xatolik bermasligi uchun)
+        await bot.session.close()
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        # Konsolda Ctrl+C bosilganda chiroyli to'xtashi uchun
+        print("Bot to'xtatildi")
