@@ -78,10 +78,8 @@ async def get_name(message: types.Message, state: FSMContext):
 
 @dp.message(AddWorker.phone)
 async def get_phone(message: types.Message, state: FSMContext):
-    # Agar foydalanuvchi tugmani bossa message.contact keladi, aks holda message.text
     p_num = message.contact.phone_number if message.contact else message.text
 
-    # Kichik tekshiruv: foydalanuvchi buyruq yuborib yubormadimi?
     if p_num.startswith('/'):
         await message.answer("⚠️ Iltimos, avval telefon raqamini kiriting yoki tugmani bosing:")
         return
@@ -312,16 +310,12 @@ import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
-# ... boshqa importlar va dp, bot obyekti ...
 
 async def main():
-    # 1. Shlyuzni (Scheduler) sozlash
     scheduler = AsyncIOScheduler(timezone='Asia/Tashkent')
 
-    # Ishni qo'shish
     scheduler.add_job(auto_reminder, "interval", minutes=1)
 
-    # Schedulerni ishga tushirish
     scheduler.start()
 
     try:
