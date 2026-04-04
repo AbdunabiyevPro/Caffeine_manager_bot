@@ -56,3 +56,4 @@ def update_worker_time(user_id, new_time):
     cursor.execute("UPDATE workers SET start_time = ? WHERE user_id = ?", (new_time, user_id))
     conn.commit()
     conn.close()
+init_db()
