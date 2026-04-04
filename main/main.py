@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta
-
+from database import init_db
 from aiogram.types import ReplyKeyboardRemove
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import pytz
@@ -326,10 +326,9 @@ async def main():
         # Bot to'xtaganda sessiyani yopish (xatolik bermasligi uchun)
         await bot.session.close()
 
-
+init_db()
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        # Konsolda Ctrl+C bosilganda chiroyli to'xtashi uchun
         print("Bot to'xtatildi")
