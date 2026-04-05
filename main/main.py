@@ -21,7 +21,7 @@ hozir = datetime.now(tashkent_tz)
 target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
 dp = Dispatcher()
 bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
-GROUP_ID = -2593004859
+GROUP_ID = -1002593004859
 
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
