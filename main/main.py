@@ -13,7 +13,7 @@ import logging
 from states import AddWorker, UpdateWorker, ReportState
 from buttons import get_filial_kb, get_phone_kb, get_status_kb
 from database import add_worker_to_db, update_worker_time, get_worker_by_id, get_all_workers, delete_worker_from_db
-from securitiy import ADMINS, GROUP_ID
+from securitiy import ADMINS
 from aiogram import types, F
 logging.basicConfig(level=logging.INFO)
 tashkent_tz = pytz.timezone('Asia/Tashkent')
@@ -21,6 +21,7 @@ hozir = datetime.now(tashkent_tz)
 target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
 dp = Dispatcher()
 bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
+GROUP_ID = -2593004859
 
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
