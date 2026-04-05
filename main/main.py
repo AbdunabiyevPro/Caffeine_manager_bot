@@ -249,8 +249,7 @@ async def send_report_to_group(user_id, status_text):
 
 async def auto_reminder():
     hozir = datetime.now(tashkent_tz)
-    target_time = (hozir + timedelta(minutes=15)).strftime("%H:%M")
-
+    target_time = (hozir + timedelta(minutes=5)).strftime("%H:%M")
     print(f"--- Tekshiruv: {hozir.strftime('%H:%M')} | Qidirilmoqda: {target_time} ---")
 
     workers = get_all_workers()
