@@ -19,3 +19,4 @@ from aiogram.fsm.state import State, StatesGroup
 
 class ReportState(StatesGroup):
     waiting_for_reason = State()
+    waiting_for_question = State()

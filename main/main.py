@@ -7,21 +7,24 @@ from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta
 from database import init_db
 from aiogram.types import ReplyKeyboardRemove
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import pytz
+import sqlite3
 import logging
 from states import AddWorker, UpdateWorker, ReportState
 from buttons import get_filial_kb, get_phone_kb, get_status_kb
 from database import add_worker_to_db, update_worker_time, get_worker_by_id, get_all_workers, delete_worker_from_db
 from securitiy import ADMINS
 from aiogram import types, F
+
 logging.basicConfig(level=logging.INFO)
 tashkent_tz = pytz.timezone('Asia/Tashkent')
 hozir = datetime.now(tashkent_tz)
 target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
 dp = Dispatcher()
 bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
-GROUP_ID = -1002593004859
+GROUP_ID = -1003720418676
+WORK_PHONE_ID = 8590453865
+
 
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
@@ -41,11 +44,11 @@ async def start_handler(message: types.Message):
 
     if user_id in ADMINS:
         await message.answer("👋 **Assalomu alaykum, Admin!**\n\n"
-            "Bot boshqaruv paneli ishga tushdi. Quyidagi buyruqlardan foydalanishingiz mumkin:\n\n"
-            "➕ /add_worker — Yangi ishchi qo'shish\n"
-            "📊 /workers_info — Ishchilar ma'lumotlarini ko'rish\n"
-            "⚙️ /workers — Ishchilar ma'lumotlarini tahrirlash\n\n"
-            "Kerakli bo'limni tanlang:")
+                             "Bot boshqaruv paneli ishga tushdi. Quyidagi buyruqlardan foydalanishingiz mumkin:\n\n"
+                             "➕ /add_worker — Yangi ishchi qo'shish\n"
+                             "📊 /workers_info — Ishchilar ma'lumotlarini ko'rish\n"
+                             "⚙️ /workers — Ishchilar ma'lumotlarini tahrirlash\n\n"
+                             "Kerakli bo'limni tanlang:")
     else:
         await message.answer("Botga xush kelibsiz! Hisobot topshirish uchun guruhdagi tugmani bosing.")
 
@@ -88,6 +91,7 @@ async def get_phone(message: types.Message, state: FSMContext):
     await state.update_data(phone=p_num)
     await message.answer("4. Qaysi filialda ishlaydi?", reply_markup=get_filial_kb())
     await state.set_state(AddWorker.filial)
+
 
 @dp.message(AddWorker.filial)
 async def get_filial(message: types.Message, state: FSMContext):
@@ -212,45 +216,101 @@ async def test_group_message(message: types.Message):
         await message.answer(f"❌ Guruhga yuborib bo'lmadi. Xato: {e}")
 
 
-async def send_report_to_admins(user_id, status_text):
-    worker = get_worker_by_id(user_id)
-    if worker:
-        report = (f"📢 **YANGI HISOBOT**\n\n"
-                  f"👤 Ishchi: {worker[1]}\n"
-                  f"📞 Tel: {worker[2]}\n"
-                  f"📍 Holati: {status_text}")
+async def send_report_to_group(user_id: int, status_text: str):
+    conn = sqlite3.connect('cafe_work.db')
+    cursor = conn.cursor()
 
-        for admin_id in ADMINS:
-            try:
-                await bot.send_message(chat_id=admin_id, text=report, parse_mode="Markdown")
-            except Exception as e:
-                print(f"Admin {admin_id} ga xabar ketmadi: {e}")
+    try:
+        cursor.execute("SELECT full_name, phone, filial FROM workers WHERE user_id = ?", (user_id,))
+        user_data = cursor.fetchone()
+    except Exception as e:
+        print(f"Bazadan ma'lumot olishda xato: {e}")
+        user_data = None
+    finally:
+        conn.close()
 
+    if user_data:
+        full_name, phone, filial = user_data
+        current_time = datetime.now().strftime("%H:%M")
 
-async def send_report_to_group(user_id, status_text):
-    worker = get_worker_by_id(user_id)
+        report_message = (
+            f"📊 **YANGI HISOBOT**\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"👤 **Ishchi:** {full_name}\n"
+            f"📍 **Filial:** {filial}\n"
+            f"📞 **Tel:** {phone}\n"
+            f"🕒 **Vaqt:** {current_time}\n"
+            f"📝 **Holati:** {status_text}\n"
+            f"━━━━━━━━━━━━━━━"
+        )
 
-    if worker:
-        report = (f"📢 **YANGI HISOBOT**\n\n"
-                  f"👤 Ishchi: {worker[1]}\n"
-                  f"📞 Tel: {worker[2]}\n"
-                  f"📍 Holati: {status_text}")
 
         try:
-            # Siklsiz, to'g'ridan-to'g'ri GROUP_ID ga yuboramiz
-            await bot.send_message(
-                chat_id=GROUP_ID,
-                text=report,
-                parse_mode="Markdown"
-            )
-            print(f"✅ Guruhga hisobot yuborildi.")
+            await bot.send_message(chat_id=GROUP_ID, text=report_message, parse_mode="Markdown")
         except Exception as e:
-            print(f"❌ Guruhga xabar yuborishda xato: {e}")
+            print(f"Guruhga xabar yuborishda xato: {e}")
+    else:
+        print(f"Xato: {user_id} ID li ishchi 'workers' jadvalidan topilmadi!")
+
+
+@dp.callback_query(F.data.startswith("status_"))
+async def handle_status(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+
+    user_info = f"👤 Ishchi: Ism Familiya\n📍 Filial: Toshkent\n📞 Tel: +998901234567"
+
+    if callback.data == "status_at_work" or callback.data == "status_on_way":
+        status_label = "Ishxonada" if callback.data == "status_at_work" else "Yo'lda (vaqtida)"
+
+        await callback.message.edit_text(
+            f"⏳ {status_label} holati tanlandi. Tasdiqlash uchun 'Reception' qurilmasiga xabar yuborildi.")
+
+        builder = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="✅ Ha, keldi", callback_data=f"confirm_arrival_{user_id}_{callback.data}")]
+        ])
+
+        await bot.send_message(
+            chat_id=WORK_PHONE_ID,
+            text=f"🔔 **TASDIQLASH SO'ROVI**\n\n{user_info}\nHolati: {status_label}\n\nUshbu ishchi ishxonaga keldimi?",
+            reply_markup=builder
+        )
+
+    elif callback.data == "status_late":
+        await callback.message.edit_text("⚠️ Kech qolishingiz sababini yozib yuboring:")
+        await state.set_state(ReportState.waiting_for_reason)
+
+    elif callback.data == "status_day_off":
+        await callback.message.edit_text("✅ Dam olish kuni belgilandi. Adminlarga yetkazildi.")
+        await send_report_to_group(user_id, "🏖 Bugun dam olish kuni")
+
+    await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("confirm_arrival_"))
+async def confirm_by_office_phone(callback: types.CallbackQuery):
+
+    data = callback.data.split("_")
+    user_id = data[2]
+    status_key = "_".join(data[3:])  # status_at_work yoki status_on_way
+
+    current_time = datetime.now().strftime("%H:%M")
+    status_text = "✅ Ishxonada" if status_key == "status_at_work" else "🏃 Keldi (yo'ldan)"
+
+
+    report = f"{status_text}\n⏰ Kelgan vaqti: {current_time}\n(Ma'lumotlar bazadan olinadi...)"
+    await send_report_to_group(user_id, report)
+
+    # 2. Ishxonadagi telefon ekranini yangilaymiz
+    await callback.message.edit_text(f"👌 Tasdiqlandi. Hisobot guruhga yuborildi. ({current_time})")
+
+    await bot.send_message(chat_id=user_id, text="✅ Kelganingiz reception tomonidan tasdiqlandi. Ishga marhamat!")
+
+    await callback.answer()
 
 
 async def auto_reminder():
     hozir = datetime.now(tashkent_tz)
-    target_time = (hozir + timedelta(minutes=5)).strftime("%H:%M")
+    target_time = (hozir + timedelta(minutes=15)).strftime("%H:%M")
     print(f"--- Tekshiruv: {hozir.strftime('%H:%M')} | Qidirilmoqda: {target_time} ---")
 
     workers = get_all_workers()
@@ -298,7 +358,7 @@ async def process_late_reason(message: types.Message, state: FSMContext):
     reason = message.text
     user_id = message.from_user.id
 
-    status_with_reason = f"⏰ Kech qoladi\n📝 Sababi: {reason}"
+    status_with_reason = f"⏰ Kech qolaman\n📝 Sababi: {reason}"
 
     await send_report_to_group(user_id, status_with_reason)
 
@@ -306,9 +366,55 @@ async def process_late_reason(message: types.Message, state: FSMContext):
     await state.clear()
 
 
+@dp.callback_query(F.data == "questions")
+async def ask_for_question(callback: types.CallbackQuery, state: FSMContext):
+    # Ishchiga savol beramiz
+    await callback.message.edit_text(
+        "📝 Savol yoki taklifingiz bo'lsa, pastga yozib yuboring. Adminlar ko'rib chiqishadi:")
+
+    # Botni "Savol kutish" holatiga o'tkazamiz
+    await state.set_state(ReportState.waiting_for_question)
+    await callback.answer()
+
+
+@dp.message(ReportState.waiting_for_question)
+async def process_question(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    user_text = message.text  # Ishchi yozgan gap
+
+    conn = sqlite3.connect('cafe_work.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT full_name, filial FROM workers WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    conn.close()
+
+    full_name = user_data[0] if user_data else "Noma'lum ishchi"
+    filial = user_data[1] if user_data else "Noma'lum filial"
+
+    admin_notification = (
+        f"📩 **YANGI MUROJAAT**\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 **Ishchi:** {full_name}\n"
+        f"📍 **Filial:** {filial}\n"
+        f"🆔 **ID:** {user_id}\n\n"
+        f"💬 **Xabar:** {user_text}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    # 3. Har bir adminga alohida xabar yuborish
+    for admin_id in ADMINS:
+        try:
+            await bot.send_message(chat_id=admin_id, text=admin_notification, parse_mode="Markdown")
+        except Exception as e:
+            print(f"Adminga ({admin_id}) xabar ketmadi: {e}")
+
+    # 4. Ishchiga javob qaytarish va holatni tozalash
+    await message.answer("✅ Rahmat! Sizning xabaringiz adminlarga shaxsiy xabar sifatida yetkazildi.")
+    await state.clear()
+
+
 import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
 
 
 async def main():
@@ -325,6 +431,7 @@ async def main():
     finally:
         # Bot to'xtaganda sessiyani yopish (xatolik bermasligi uchun)
         await bot.session.close()
+
 
 init_db()
 if __name__ == "__main__":
