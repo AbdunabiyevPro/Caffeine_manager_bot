@@ -274,7 +274,12 @@ async def send_report_to_group(user_id: int, status_text: str):
 async def handle_status(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
 
-    user_info = f"👤 Ishchi: Ism Familiya\n📍 Filial: Toshkent\n📞 Tel: +998901234567"
+    # Ishchining Telegramdagi ism-familiyasini olish
+    # Agar familiyasi bo'lmasa, faqat ismi chiqadi
+    full_name = callback.from_user.full_name
+
+    # Faqat ism va ID ni ko'rsatamiz (username kerakmas)
+    user_info = f"👤 Ishchi: **{full_name}**\n🆔 ID: `{user_id}`"
 
     if callback.data == "status_at_work" or callback.data == "status_on_way":
         status_label = "Ishxonada" if callback.data == "status_at_work" else "Yo'lda (vaqtida)"
@@ -286,10 +291,12 @@ async def handle_status(callback: types.CallbackQuery, state: FSMContext):
             [types.InlineKeyboardButton(text="✅ Ha, keldi", callback_data=f"confirm_arrival_{user_id}_{callback.data}")]
         ])
 
+        # Reception (WORK_PHONE_ID) ga yuboriladigan xabar
         await bot.send_message(
             chat_id=WORK_PHONE_ID,
-            text=f"🔔 **TASDIQLASH SO'ROVI**\n\n{user_info}\nHolati: {status_label}\n\nUshbu ishchi ishxonaga keldimi?",
-            reply_markup=builder
+            text=f"🔔 **TASDIQLASH SO'ROVI**\n\n{user_info}\n📍 Holati: **{status_label}**\n\nUshbu ishchi ishxonaga kelganini tasdiqlaysizmi?",
+            reply_markup=builder,
+            parse_mode="Markdown"
         )
 
     elif callback.data == "status_late":
@@ -301,7 +308,6 @@ async def handle_status(callback: types.CallbackQuery, state: FSMContext):
         await send_report_to_group(user_id, "🏖 Bugun dam olish kuni")
 
     await callback.answer()
-
 
 @dp.callback_query(F.data.startswith("confirm_arrival_"))
 async def confirm_by_office_phone(callback: types.CallbackQuery):
