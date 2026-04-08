@@ -16,10 +16,27 @@ from database import add_worker_to_db, update_worker_time, get_worker_by_id, get
 from securitiy import ADMINS
 from aiogram import types, F
 
+#logging.basicConfig(level=logging.INFO)
+#tashkent_tz = pytz.timezone('Asia/Tashkent')
+#hozir = datetime.now(tashkent_tz)
+#target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
+#dp = Dispatcher()
+#bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
+#GROUP_ID = -1002593004859
+#WORK_PHONE_ID = 6531070045
+
 logging.basicConfig(level=logging.INFO)
+
+# Toshkent vaqt zonasi
 tashkent_tz = pytz.timezone('Asia/Tashkent')
+
+# Hozirgi vaqtni Toshkent vaqti bilan olish
 hozir = datetime.now(tashkent_tz)
-target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
+
+# Target vaqtni ham Toshkent vaqtiga nisbatan 10 daqiqa qo'shib olish
+# datetime.now() ichiga tashkent_tz berilishi shart
+target_time = (datetime.now(tashkent_tz) + timedelta(minutes=10)).strftime("%H:%M")
+
 dp = Dispatcher()
 bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
 GROUP_ID = -1002593004859
