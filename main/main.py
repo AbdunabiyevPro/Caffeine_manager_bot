@@ -248,7 +248,7 @@ async def send_report_to_group(user_id: int, status_text: str):
 
     if user_data:
         full_name, phone, filial = user_data
-        current_time = datetime.now().strftime("%H:%M")
+        current_time = datetime.now(tashkent_tz).strftime("%H:%M")
 
         report_message = (
             f"📊 **YANGI HISOBOT**\n"
@@ -323,7 +323,7 @@ async def confirm_by_office_phone(callback: types.CallbackQuery):
     report = f"{status_text}\n⏰ Kelgan vaqti: {current_time}\n(Ma'lumotlar bazadan olinadi...)"
     await send_report_to_group(user_id, report)
 
-    # 2. Ishxonadagi telefon ekranini yangilaymiz
+
     await callback.message.edit_text(f"👌 Tasdiqlandi. Hisobot guruhga yuborildi. ({current_time})")
 
     await bot.send_message(chat_id=user_id, text="✅ Kelganingiz reception tomonidan tasdiqlandi. Ishga marhamat!")
