@@ -39,7 +39,6 @@ def get_group_reply_kb():
 def get_status_kb():
     buttons = [
         [types.InlineKeyboardButton(text="✅ Ishxonadaman", callback_data="status_at_work")],
-        [types.InlineKeyboardButton(text="🏃 Yo'ldaman (o'z vaqtida)", callback_data="status_on_way")],
         [types.InlineKeyboardButton(text="⏰ Kech qolaman", callback_data="status_late")],
         [types.InlineKeyboardButton(text="Bugun menga dam😊", callback_data="status_day_off")],
         [types.InlineKeyboardButton(text="Savol va takliflar?", callback_data="questions")]
