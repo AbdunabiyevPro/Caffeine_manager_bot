@@ -316,7 +316,7 @@ async def confirm_by_office_phone(callback: types.CallbackQuery):
     user_id = data[2]
     status_key = "_".join(data[3:])  # status_at_work yoki status_on_way
 
-    current_time = datetime.now().strftime("%H:%M")
+    current_time = datetime.now(tashkent_tz).strftime("%H:%M")
     status_text = "✅ Ishxonada" if status_key == "status_at_work" else "🏃 Keldi (yo'ldan)"
 
 
