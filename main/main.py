@@ -41,31 +41,49 @@ WORK_PHONE_ID_2 = 8159413536
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
+    # message.text dan keyingi parametrlarni olish (Deep Linking)
     args = message.text.split()
 
-    if len(args) > 1 and args[1].startswith("check_"):
-        # Link ichidan asl ishchining ID sini ajratib olamiz
-        target_worker_id = int(args[1].split("_")[1])
+    # Agar link orqali (t.me/bot?start=...) kelgan bo'lsa
+    if len(args) > 1:
+        param = args[1]  # Masalan: "check_1234567"
 
-        if user_id != target_worker_id:
-            await message.answer(
-                "⚠️ Kechirasiz, siz boshqa ishchining tugmasini bosdingiz. Faqat o'zingiz uchun hisobot bera olasiz!")
-            return
+        if param.startswith("check_"):
+            try:
+                # ID ni ajratib olamiz
+                target_worker_id = int(param.replace("check_", ""))
 
-        worker = get_worker_by_id(user_id)
-        if worker:
-            await message.answer(
-                f"Assalomu alaykum, {worker[1]}!\nIltimos, hozirgi holatingizni tanlang:",
-                reply_markup=get_status_kb()
-            )
-        else:
-            await message.answer("Siz bazada yo'qsiz. Managerga murojaat qiling.")
-        return
+                # 1. Xavfsizlik tekshiruvi: Tugmani bosgan odam ID si linkdagi ID ga tengmi?
+                if user_id != target_worker_id:
+                    await message.answer(
+                        "⚠️ Kechirasiz, siz boshqa ishchining tugmasini bosdingiz. \n"
+                        "Faqat o'zingiz uchun hisobot bera olasiz!"
+                    )
+                    return
 
+                # 2. Bazadan ishchini qidiramiz
+                worker = get_worker_by_id(user_id)
+                if worker:
+                    await message.answer(
+                        f"Assalomu alaykum, {worker[1]}!\n"
+                        f"Iltimos, hozirgi holatingizni tanlang:",
+                        reply_markup=get_status_kb()
+                    )
+                else:
+                    await message.answer("❌ Siz bazada topilmadingiz. Managerga murojaat qiling.")
+
+                return  # Deep link ishini bitirdi, pastga tushmaydi
+
+            except ValueError:
+                await message.answer("⚠️ Noto'g'ri parametr yuborildi.")
+                return
+
+    # Agar oddiy /start bosilgan bo'lsa yoki Deep Link xato bo'lsa
     if user_id in ADMINS:
         await message.answer("👋 **Assalomu alaykum, Admin!**\n\n"
                              "Bot boshqaruv paneli ishga tushdi. /add_worker orqali ishchi qo'shishingiz mumkin.")
-
+    else:
+        await message.answer("Botga xush kelibsiz! Hisobot topshirish uchun guruhdagi tugmani bosing.")
 
 
 @dp.message(Command("add_worker"))
