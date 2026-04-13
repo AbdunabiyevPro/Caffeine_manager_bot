@@ -65,8 +65,7 @@ async def start_handler(message: types.Message):
     if user_id in ADMINS:
         await message.answer("👋 **Assalomu alaykum, Admin!**\n\n"
                              "Bot boshqaruv paneli ishga tushdi. /add_worker orqali ishchi qo'shishingiz mumkin.")
-    else:
-        await message.answer("Botga xush kelibsiz!")
+
 
 
 @dp.message(Command("add_worker"))
