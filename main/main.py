@@ -384,24 +384,30 @@ async def auto_reminder():
     workers = get_all_workers()
 
     for w in workers:
+        user_id = w[0] # Bazadagi birinchi ustun - ID
+        ism_familiya = w[1]
         baza_vaqti = str(w[4]).strip()
 
         if baza_vaqti == target_time:
-            ism_familiya = w[1]
+            # DIQQAT: Link oxiriga {user_id} ni qo'shamiz!
+            # Shunda bot kim bosganini biladi
+            check_link = f"https://t.me/caffeine_manager_bot?start=check_{user_id}"
+
             inline_kb = types.InlineKeyboardMarkup(inline_keyboard=[
                 [types.InlineKeyboardButton(
                     text="Javob berish ✍️",
-                    url="https://t.me/caffeine_manager_bot?start=check"
+                    url=check_link
                 )]
             ])
 
             try:
                 await bot.send_message(
                     chat_id=GROUP_ID,
-                    text=f"🔔 {ism_familiya} ishga kelyapsizmi?",
-                    reply_markup=inline_kb
+                    text=f"🔔 **{ism_familiya}**, ish vaqtingiz yaqinlashmoqda. Ishga kelyapsizmi?",
+                    reply_markup=inline_kb,
+                    parse_mode="Markdown"
                 )
-                print(f"✅ Guruhga yuborildi: {ism_familiya}")
+                print(f"✅ Guruhga yuborildi: {ism_familiya} (ID: {user_id})")
             except Exception as e:
                 print(f"❌ Xato: {e}")
 
