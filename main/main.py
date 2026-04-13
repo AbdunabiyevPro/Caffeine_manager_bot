@@ -16,18 +16,12 @@ from database import add_worker_to_db, update_worker_time, get_worker_by_id, get
 from securitiy import ADMINS
 from aiogram import types, F
 
-#logging.basicConfig(level=logging.INFO)
-#tashkent_tz = pytz.timezone('Asia/Tashkent')
-#hozir = datetime.now(tashkent_tz)
-#target_time = (datetime.now() + timedelta(minutes=10)).strftime("%H:%M")
-#dp = Dispatcher()
-#bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
-#GROUP_ID = -1002593004859
-#WORK_PHONE_ID = 6531070045
+
+
+
 
 logging.basicConfig(level=logging.INFO)
 
-# Toshkent vaqt zonasi
 tashkent_tz = pytz.timezone('Asia/Tashkent')
 
 # Hozirgi vaqtni Toshkent vaqti bilan olish
@@ -41,6 +35,7 @@ dp = Dispatcher()
 bot = Bot(token="8607811325:AAF9QItvZIhxv3x4edRba-wS8wbUwSYVp2Y")
 GROUP_ID = -1002593004859
 WORK_PHONE_ID = 6531070045
+WORK_PHONE_ID_2 = 8159413536
 
 
 @dp.message(Command("start"))
@@ -48,7 +43,15 @@ async def start_handler(message: types.Message):
     user_id = message.from_user.id
     args = message.text.split()
 
-    if len(args) > 1 and args[1] == "check":
+    if len(args) > 1 and args[1].startswith("check_"):
+        # Link ichidan asl ishchining ID sini ajratib olamiz
+        target_worker_id = int(args[1].split("_")[1])
+
+        if user_id != target_worker_id:
+            await message.answer(
+                "⚠️ Kechirasiz, siz boshqa ishchining tugmasini bosdingiz. Faqat o'zingiz uchun hisobot bera olasiz!")
+            return
+
         worker = get_worker_by_id(user_id)
         if worker:
             await message.answer(
@@ -61,13 +64,9 @@ async def start_handler(message: types.Message):
 
     if user_id in ADMINS:
         await message.answer("👋 **Assalomu alaykum, Admin!**\n\n"
-                             "Bot boshqaruv paneli ishga tushdi. Quyidagi buyruqlardan foydalanishingiz mumkin:\n\n"
-                             "➕ /add_worker — Yangi ishchi qo'shish\n"
-                             "📊 /workers_info — Ishchilar ma'lumotlarini ko'rish\n"
-                             "⚙️ /workers — Ishchilar ma'lumotlarini tahrirlash\n\n"
-                             "Kerakli bo'limni tanlang:")
+                             "Bot boshqaruv paneli ishga tushdi. /add_worker orqali ishchi qo'shishingiz mumkin.")
     else:
-        await message.answer("Botga xush kelibsiz! Hisobot topshirish uchun guruhdagi tugmani bosing.")
+        await message.answer("Botga xush kelibsiz!")
 
 
 @dp.message(Command("add_worker"))
@@ -273,60 +272,89 @@ async def send_report_to_group(user_id: int, status_text: str):
 @dp.callback_query(F.data.startswith("status_"))
 async def handle_status(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
+    worker = get_worker_by_id(user_id)  # Bazadan ma'lumotni olamiz
 
-    # Ishchining Telegramdagi ism-familiyasini olish
-    # Agar familiyasi bo'lmasa, faqat ismi chiqadi
-    full_name = callback.from_user.full_name
+    if not worker:
+        await callback.answer("Xatolik: Siz bazada yo'qsiz!", show_alert=True)
+        return
 
-    # Faqat ism va ID ni ko'rsatamiz (username kerakmas)
-    user_info = f"👤 Ishchi: **{full_name}**\n🆔 ID: `{user_id}`"
+    full_name = worker[1]
+    filial_nomi = worker[3]  # "Riviera" yoki boshqasi
 
-    if callback.data == "status_at_work" or callback.data == "status_on_way":
+    # 1. AGAR KECH QOLSA (Sababini so'raymiz)
+    if callback.data == "status_late":
+        await callback.message.edit_text("⚠️ Iltimos, kech qolishingiz sababini qisqacha yozib yuboring:")
+        await state.set_state(ReportState.waiting_for_reason)
+
+    # 2. AGAR DAM OLISH BO'LSA
+    elif callback.data == "status_day_off":
+        await callback.message.edit_text(f"✅ Dam olish kuni belgilandi. ({filial_nomi})")
+        await send_report_to_group(user_id, f"🏖 Bugun dam olish kuni")
+
+    # 3. AGAR ISHXONADA YOKI YO'LDA BO'LSA (Tasdiqlashga yuboramiz)
+    elif callback.data in ["status_at_work", "status_on_way"]:
         status_label = "Ishxonada" if callback.data == "status_at_work" else "Yo'lda (vaqtida)"
 
         await callback.message.edit_text(
-            f"⏳ {status_label} holati tanlandi. Tasdiqlash uchun 'Reception' qurilmasiga xabar yuborildi.")
+            f"⏳ {status_label} holati tanlandi. Tasdiqlash uchun '{filial_nomi}' Receptionga xabar yuborildi.")
 
         builder = types.InlineKeyboardMarkup(inline_keyboard=[
             [types.InlineKeyboardButton(text="✅ Ha, keldi", callback_data=f"confirm_arrival_{user_id}_{callback.data}")]
         ])
 
-        # Reception (WORK_PHONE_ID) ga yuboriladigan xabar
+
+        target_chat = WORK_PHONE_ID_2 if filial_nomi == "Riviera" else WORK_PHONE_ID
+
         await bot.send_message(
-            chat_id=WORK_PHONE_ID,
-            text=f"🔔 **TASDIQLASH SO'ROVI**\n\n{user_info}\n📍 Holati: **{status_label}**\n\nUshbu ishchi ishxonaga kelganini tasdiqlaysizmi?",
+            chat_id=target_chat,
+            text=(f"🔔 **TASDIQLASH SO'ROVI**\n\n"
+                  f"👤 Ishchi: **{full_name}**\n"
+                  f"🏢 Filial: **{filial_nomi}**\n"
+                  f"📍 Holati: **{status_label}**\n\n"
+                  f"Ushbu ishchi kelganini tasdiqlaysizmi?"),
             reply_markup=builder,
             parse_mode="Markdown"
         )
 
-    elif callback.data == "status_late":
-        await callback.message.edit_text("⚠️ Kech qolishingiz sababini yozib yuboring:")
-        await state.set_state(ReportState.waiting_for_reason)
-
-    elif callback.data == "status_day_off":
-        await callback.message.edit_text("✅ Dam olish kuni belgilandi. Adminlarga yetkazildi.")
-        await send_report_to_group(user_id, "🏖 Bugun dam olish kuni")
-
     await callback.answer()
+
 
 @dp.callback_query(F.data.startswith("confirm_arrival_"))
 async def confirm_by_office_phone(callback: types.CallbackQuery):
-
     data = callback.data.split("_")
-    user_id = data[2]
+    user_id = int(data[2])  # ID ni son ko'rinishida olamiz
     status_key = "_".join(data[3:])  # status_at_work yoki status_on_way
 
+    worker = get_worker_by_id(user_id)
+
+    if not worker:
+        await callback.answer("Xatolik: Ishchi topilmadi!")
+        return
+
+    full_name = worker[1]
+    filial_nomi = worker[3]
     current_time = datetime.now(tashkent_tz).strftime("%H:%M")
+
     status_text = "✅ Ishxonada" if status_key == "status_at_work" else "🏃 Keldi (yo'ldan)"
 
 
-    report = f"{status_text}\n⏰ Kelgan vaqti: {current_time}\n(Ma'lumotlar bazadan olinadi...)"
-    await send_report_to_group(user_id, report)
+    report_text = f"{status_text} (Filial: {filial_nomi})"
+    await send_report_to_group(user_id, report_text)
 
+    await callback.message.edit_text(
+        f"👌 **{full_name}** tasdiqlandi.\n"
+        f"🏢 Filial: {filial_nomi}\n"
+        f"⏰ Vaqt: {current_time}\n"
+        f"✅ Hisobot guruhga yuborildi."
+    )
 
-    await callback.message.edit_text(f"👌 Tasdiqlandi. Hisobot guruhga yuborildi. ({current_time})")
-
-    await bot.send_message(chat_id=user_id, text="✅ Kelganingiz reception tomonidan tasdiqlandi. Ishga marhamat!")
+    try:
+        await bot.send_message(
+            chat_id=user_id,
+            text=f"✅ Kelganingiz **{filial_nomi}** reception tomonidan tasdiqlandi. Ishga marhamat!"
+        )
+    except Exception as e:
+        print(f"Xabarni yuborishda xato: {e}")
 
     await callback.answer()
 
@@ -361,19 +389,7 @@ async def auto_reminder():
                 print(f"❌ Xato: {e}")
 
 
-@dp.callback_query(F.data.startswith("status_"))
-async def handle_status(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
 
-    if callback.data == "status_late":
-        await callback.message.edit_text("⚠️ Iltimos, kech qolishingiz sababini qisqacha yozib yuboring:")
-        await state.set_state(ReportState.waiting_for_reason)
-    else:
-        status_text = "✅ Ishxonada" if callback.data == "status_at_work" else "🏃 Yo'lda (vaqtida)"
-        await send_report_to_group(user_id, status_text)
-        await callback.message.edit_text(f"Rahmat! Holatingiz: {status_text} deb belgilandi.")
-
-    await callback.answer()
 
 
 @dp.message(ReportState.waiting_for_reason)
